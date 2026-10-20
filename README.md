@@ -97,7 +97,7 @@ curl -X POST -H "X-WSP: 1" -H "Content-Type: application/json" \
 ## 8. Kalau rusak
 
 - **Log:** `data/server.log`. Untuk log lebih rinci: `DEBUG_WA=1 ./start.sh`.
-- **Baileys berubah:** WhatsApp sering mengubah protokol. Coba `npm update @whiskeysockets/baileys`. Semua kode yang menyentuh Baileys ada di `lib/wa.js`.
+- **Baileys berubah:** WhatsApp sering mengubah protokol. Versi Baileys dikunci ke `7.0.0-rc14`, yang sudah teruji. Kalau suatu hari berhenti bekerja, coba versi terbaru dengan `npm install @whiskeysockets/baileys@latest`. Semua kode yang menyentuh Baileys ada di `lib/wa.js`.
 - **Perangkat tertaut dicabut:** terjadi kalau HP utama nomor itu tidak online sekitar 14 hari. Tautkan ulang.
 - **Jangan bagikan log `DEBUG_WA`** atau folder `data/auth`: isinya bisa memuat kunci sesi WhatsApp.
 
