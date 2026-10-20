@@ -412,21 +412,56 @@ $('pickClose').addEventListener('click', () => picker.close());
 picker.addEventListener('close', saveLists);
 
 // ---------- kirim ----------
+let dest = load('wsp-dest') === 'chat' ? 'chat' : 'status';
+$('target').value = load('wsp-target') || '';
+
+function normPhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('0')) d = '62' + d.slice(1);
+  return d.length >= 8 && d.length <= 15 ? d : null;
+}
+
+function setDest(d) {
+  dest = d;
+  store('wsp-dest', d);
+  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dest === d)));
+  show($('audBtn'), d === 'status');
+  show($('chatBox'), d === 'chat');
+  updatePostButton();
+}
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setDest(b.dataset.dest)));
+$('target').addEventListener('input', () => { store('wsp-target', $('target').value); updatePostButton(); });
+
 function updatePostButton() {
-  const m = audience();
-  const i = m && audInfo(m);
   const btn = $('postBtn');
-  const wait = Math.ceil(((wa.cooldownUntil || 0) - Date.now()) / 1000);
-  btn.disabled = !(wa.state === 'open' && current && !uploading && !posting && i && i.n > 0 && wait <= 0);
-  btn.textContent =
+  const base = wa.state === 'open' && current && !uploading && !posting;
+  const head =
     posting ? 'Mengirim…' :
     uploading ? 'Mengunggah ke server…' :
-    wa.state !== 'open' ? 'Menunggu WhatsApp terhubung' :
-    wait > 0 ? `Bisa kirim lagi dalam ${fmtWait(wait)}` :
+    wa.state !== 'open' ? 'Menunggu WhatsApp terhubung' : null;
+
+  if (dest === 'chat') {
+    const num = normPhone($('target').value);
+    const wait = Math.ceil(((wa.chatCooldownUntil || 0) - Date.now()) / 1000);
+    btn.disabled = !(base && num && wait <= 0);
+    btn.textContent = head ||
+      (wait > 0 ? `Bisa kirim lagi dalam ${fmtWait(wait)}` :
+      !current ? 'Pilih file dulu' :
+      !num ? 'Isi nomor tujuan dulu' :
+      `Kirim ke +${num}`);
+    return;
+  }
+
+  const m = audience();
+  const i = m && audInfo(m);
+  const wait = Math.ceil(((wa.cooldownUntil || 0) - Date.now()) / 1000);
+  btn.disabled = !(base && i && i.n > 0 && wait <= 0);
+  btn.textContent = head ||
+    (wait > 0 ? `Bisa kirim lagi dalam ${fmtWait(wait)}` :
     !current ? 'Pilih file dulu' :
     !m ? 'Pilih audiens dulu' :
     !(i.n > 0) ? 'Daftar audiens masih kosong' :
-    'Kirim ke Status';
+    'Kirim ke Status');
 }
 
 function fmtWait(s) {
@@ -434,7 +469,10 @@ function fmtWait(s) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 // Hitung mundur jeda di tombol kirim.
-setInterval(() => { if ((wa.cooldownUntil || 0) > Date.now() - 1500) updatePostButton(); }, 1000);
+setInterval(() => {
+  const until = Math.max(wa.cooldownUntil || 0, wa.chatCooldownUntil || 0);
+  if (until > Date.now() - 1500) updatePostButton();
+}, 1000);
 
 function jobCard() {
   const box = document.createElement('div');
@@ -443,6 +481,7 @@ function jobCard() {
   return (j) => {
     const finished = j.status === 'done' || j.status === 'error';
     const confirmed = j.status === 'done' && j.result && j.result.ack !== 'none';
+    const toChat = !!(j.result && j.result.number);
     box.className = 'job' + (j.status === 'done' ? ' done' : j.status === 'error' ? ' error' : '');
     box.replaceChildren();
 
@@ -453,7 +492,7 @@ function jobCard() {
       queued: 'Menunggu giliran…',
       transcoding: `Mengonversi video${j.progress != null ? ` ${j.progress}%` : ''}…`,
       sending: 'Mengirim ke WhatsApp…',
-      done: confirmed ? 'Terkirim ke Status' : 'Perintah kirim selesai',
+      done: !confirmed ? 'Perintah kirim selesai' : toChat ? `Terkirim ke +${j.result.number}` : 'Terkirim ke Status',
       error: 'Gagal mengirim',
     }[j.status];
     t.appendChild(title);
@@ -478,7 +517,11 @@ function jobCard() {
     }
 
     let text = '';
-    if (j.status === 'done' && j.result) {
+    if (j.status === 'done' && j.result && toChat) {
+      text = j.result.ack === 'none'
+        ? 'Belum ada konfirmasi dalam 12 detik. Cek chat di nomor tujuan.'
+        : 'Buka chat ini di nomor tujuan, lalu teruskan ke Status saya.';
+    } else if (j.status === 'done' && j.result) {
       const ack = j.result.ack === 'delivered' ? 'Sudah diterima di HP penerima.'
         : j.result.ack === 'server' ? 'Diterima server WhatsApp.'
         : 'Belum ada konfirmasi dalam 12 detik. Cek tab Status di WhatsApp.';
@@ -490,8 +533,37 @@ function jobCard() {
   };
 }
 
+async function runJob(started) {
+  const render = jobCard();
+  render({ status: 'queued' });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const j = await api(`/api/jobs/${started.jobId}`);
+    render(j);
+    if (j.status === 'done') { resetFile(); $('caption').value = ''; loadPosts(); return; }
+    if (j.status === 'error') return;
+  }
+}
+
 $('postBtn').addEventListener('click', async () => {
   if (!current) return;
+
+  if (dest === 'chat') {
+    posting = true;
+    updatePostButton();
+    try {
+      const started = await api('/api/post', { method: 'POST', body: { id: current.id, caption: $('caption').value, dest: 'chat', target: $('target').value } });
+      await runJob(started);
+    } catch (e) {
+      flash(e.message, true);
+    } finally {
+      posting = false;
+      refreshState();
+    }
+    return;
+  }
+
   const mode = audience();
   const info = audInfo(mode);
   let confirmLarge = false;
@@ -513,17 +585,7 @@ $('postBtn').addEventListener('click', async () => {
       if (!confirm(`${e.message} Tetap kirim?`)) return;
       started = await send(true);
     }
-    const { jobId } = started;
-    const render = jobCard();
-    render({ status: 'queued' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 1000));
-      const j = await api(`/api/jobs/${jobId}`);
-      render(j);
-      if (j.status === 'done') { resetFile(); $('caption').value = ''; loadPosts(); break; }
-      if (j.status === 'error') break;
-    }
+    await runJob(started);
   } catch (e) {
     flash(e.message, true);
   } finally {
@@ -531,6 +593,7 @@ $('postBtn').addEventListener('click', async () => {
     refreshState(); // ambil waktu jeda terbaru dari server
   }
 });
+setDest(dest);
 
 // ---------- riwayat ----------
 const AUD_NAME = { all: 'Kontak saya', except: 'Kontak saya, kecuali…', only: 'Bagikan hanya ke…', close: 'Teman dekat' };

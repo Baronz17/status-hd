@@ -222,6 +222,16 @@ button:disabled { cursor: not-allowed; }
 .audrow.need .audv { color: var(--warn-text); }
 .audrow.big .audc { color: var(--warn-text); }
 
+/* ---------- pilihan tujuan ---------- */
+.seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px;
+  background: var(--glass); border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.seg button { min-height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 14.5px; font-weight: 600; }
+.seg button[aria-pressed=true] { background: var(--green); color: var(--green-ink); }
+.chatbox { display: grid; gap: 8px; padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--hair); }
+
 /* ---------- kartu proses kirim ---------- */
 .job { padding: 13px 16px; display: grid; gap: 6px; }
 .job .jt { font-weight: 650; display: flex; justify-content: space-between; gap: 12px; align-items: center; }

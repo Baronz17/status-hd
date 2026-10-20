@@ -53,6 +53,11 @@
     <section id="vSend" class="view" hidden>
       <div id="jobArea"></div>
 
+      <div class="seg" role="group" aria-label="Tujuan kiriman">
+        <button type="button" data-dest="status" aria-pressed="true">Status</button>
+        <button type="button" data-dest="chat" aria-pressed="false">Chat ke nomor</button>
+      </div>
+
       <label class="frame" for="file" id="frame">
         <input id="file" type="file" accept="video/*,image/*" hidden>
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
@@ -89,6 +94,12 @@
         <span id="audCount" class="audc"></span>
         <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+
+      <div id="chatBox" class="chatbox" hidden>
+        <label for="target">Nomor tujuan</label>
+        <input id="target" type="tel" inputmode="numeric" placeholder="6281234567890" autocomplete="off">
+        <p class="muted">Misalnya nomor utamamu. Di sana, buka chatnya lalu teruskan file ini ke Status saya. Nomor utama tidak perlu ditautkan ke aplikasi ini.</p>
+      </div>
       </div>
     </section>
 

@@ -77,6 +77,18 @@ Kalau tab **Akun** menunjukkan 0 kontak tersimpan, putuskan nomor lalu tautkan u
 
 **Riwayat:** tombol **Hapus** mengirim perintah hapus ke penerima yang sama dengan saat posting. Itu tidak menjamin status hilang di semua HP.
 
+## Kirim ke nomor utama, lalu teruskan ke Status (eksperimen)
+
+Di tab **Kirim**, pilih **Chat ke nomor** dan isi nomor utamamu. Aplikasi mengirim file asli dari nomor cadangan ke chat nomor utama. Di HP, buka chat itu lalu teruskan file ke **Status saya**.
+
+Kelebihannya:
+- Nomor utama tidak pernah ditautkan ke klien tidak resmi. Risiko blokir hanya ada di nomor cadangan.
+- Audiens status mengikuti pengaturan privasi WhatsApp di nomor utama, dan status bisa dihapus seperti biasa.
+
+**Belum terverifikasi:** apakah WhatsApp mengompres ulang video saat diteruskan ke Status. Kalau iya, cara ini tidak memberi kualitas HD. Uji dulu dengan satu video dan bandingkan.
+
+Jeda antar kiriman chat 15 detik, bisa diubah dengan `CHAT_GAP_SEC`.
+
 ## Mengurangi risiko blokir
 
 Tidak ada cara yang menjamin nomor aman, karena aturan deteksi WhatsApp tidak dipublikasikan. Aplikasi ini mengurangi pola yang paling mencolok:
