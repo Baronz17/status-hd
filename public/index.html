@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06110d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#e9f4ee" media="(prefers-color-scheme: light)">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon-192.png">
+  <title>Status HD</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="offline" class="banner" role="alert" hidden>
+    <span>Server tidak merespons. Buka Termux lalu jalankan <code>./start.sh</code>.</span>
+    <button id="retryBtn" type="button" class="ghost small">Coba lagi</button>
+  </div>
+
+  <header class="top">
+    <h1 class="brand">Status <span class="hd">HD</span></h1>
+    <span id="chip" class="chip"><i class="dot"></i><span id="chipText">memeriksa…</span></span>
+  </header>
+
+  <div id="alert" class="alert" role="status" hidden></div>
+
+  <main id="main">
+    <!-- Pairing: tampil sendiri sebelum nomor terhubung -->
+    <section id="vLink" class="view" hidden>
+      <h2 class="title">Hubungkan nomor cadangan</h2>
+      <p class="lead">Aplikasi ini tersambung ke WhatsApp sebagai perangkat tertaut, seperti WhatsApp Web. Pakai nomor cadangan, bukan nomor utama.</p>
+
+      <div class="group">
+        <label for="phone">Nomor WhatsApp dengan kode negara</label>
+        <input id="phone" type="tel" inputmode="numeric" placeholder="6281234567890" autocomplete="off">
+        <button id="pairBtn" type="button" class="primary">Minta kode tautan</button>
+      </div>
+
+      <div id="codeBox" class="codebox" hidden>
+        <p class="muted">Masukkan kode ini di WhatsApp nomor tersebut</p>
+        <div id="code" class="code">…</div>
+        <ol class="steps">
+          <li>Buka WhatsApp di nomor tersebut</li>
+          <li>Setelan, lalu Perangkat tertaut, lalu Tautkan perangkat</li>
+          <li>Pilih Tautkan dengan nomor telepon</li>
+          <li>Ketik kode di atas</li>
+        </ol>
+      </div>
+
+      <p class="fine">Klien tidak resmi melanggar ketentuan WhatsApp. Nomor yang dipakai bisa dibatasi atau diblokir.</p>
+    </section>
+
+    <!-- Tab Kirim -->
+    <section id="vSend" class="view" hidden>
+      <div id="jobArea"></div>
+
+      <label class="frame" for="file" id="frame">
+        <input id="file" type="file" accept="video/*,image/*" hidden>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <span id="frameEmpty" class="frame-empty">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M20 15.5v17l13-8.5z" fill="currentColor"/></svg>
+          <b>Pilih video atau foto</b>
+          <span>Atau bagikan langsung dari galeri ke Status HD</span>
+        </span>
+        <video id="pv" playsinline muted loop preload="metadata" hidden></video>
+        <img id="pi" alt="Pratinjau foto yang dipilih" hidden>
+        <span id="frameName" class="frame-name" hidden></span>
+      </label>
+
+      <div id="uploadBar" class="bar" hidden><div id="uploadFill"></div></div>
+
+      <div id="fileInfo" class="fileinfo" hidden>
+        <dl id="specs" class="specs"></dl>
+        <p id="verdict" class="verdict"></p>
+        <p id="infoWarn" class="warnline" hidden></p>
+        <details id="techBox" class="tech" hidden>
+          <summary>Kenapa perlu dikonversi</summary>
+          <ul id="techList"></ul>
+        </details>
+        <button id="changeFile" type="button" class="ghost small">Ganti file</button>
+      </div>
+
+      <div class="group">
+      <label for="caption">Keterangan <span class="soft">(opsional)</span></label>
+      <textarea id="caption" rows="2" maxlength="700" placeholder="Tulis keterangan untuk status ini"></textarea>
+
+      <button id="audBtn" type="button" class="audrow">
+        <span class="audk">Siapa yang melihat</span>
+        <span id="audLabel" class="audv">Pilih audiens</span>
+        <span id="audCount" class="audc"></span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      </div>
+    </section>
+
+    <!-- Tab Riwayat -->
+    <section id="vHist" class="view" hidden>
+      <h2 class="title">Riwayat</h2>
+      <p class="lead">Status yang kamu kirim dari aplikasi ini. Menghapus mengirim perintah hapus ke penerima yang sama, tapi tidak menjamin status hilang di semua HP.</p>
+      <div id="hist" class="hist"></div>
+    </section>
+
+    <!-- Tab Akun -->
+    <section id="vAcct" class="view" hidden>
+      <h2 class="title">Akun</h2>
+      <dl class="facts">
+        <div><dt>Nomor</dt><dd id="acctNumber">–</dd></div>
+        <div><dt>Status</dt><dd id="acctState">–</dd></div>
+        <div><dt>Kontak tersimpan</dt><dd id="acctSaved">–</dd></div>
+        <div><dt>Entri lain yang tersinkron</dt><dd id="acctOther">–</dd></div>
+      </dl>
+      <p class="muted">Hanya kontak tersimpan yang dipakai untuk audiens Kontak saya. Kalau jumlahnya 0, putuskan lalu tautkan ulang untuk menyinkronkan kontak.</p>
+
+      <button id="logoutBtn" type="button" class="danger">Putuskan nomor ini</button>
+      <p class="fine">Klien tidak resmi melanggar ketentuan WhatsApp. Nomor yang dipakai bisa dibatasi atau diblokir.</p>
+    </section>
+  </main>
+
+  <div id="sendBar" class="sendbar" hidden>
+    <button id="postBtn" type="button" class="primary big" disabled>Kirim ke Status</button>
+  </div>
+
+  <nav id="tabs" class="tabs" hidden>
+    <button type="button" data-tab="send">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l15-7-5 15-3-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>Kirim</span>
+    </button>
+    <button type="button" data-tab="hist">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Riwayat</span>
+    </button>
+    <button type="button" data-tab="acct">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c1.2-3.8 4-5.5 7.5-5.5s6.3 1.7 7.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Akun</span>
+    </button>
+  </nav>
+
+  <!-- Lembar pilihan audiens -->
+  <dialog id="audSheet" class="sheet">
+    <div class="sheethead">
+      <b>Siapa yang melihat</b>
+      <button id="audDone" type="button" class="primary small">Selesai</button>
+    </div>
+    <div class="audopts">
+      <div class="audopt">
+        <label><input type="radio" name="aud" value="all"><span><b>Kontak saya</b><small id="cnt-all"></small></span></label>
+      </div>
+      <div class="audopt">
+        <label><input type="radio" name="aud" value="except"><span><b>Kontak saya, kecuali…</b><small id="cnt-except"></small></span></label>
+        <button type="button" class="ghost small" data-edit="except">Atur</button>
+      </div>
+      <div class="audopt">
+        <label><input type="radio" name="aud" value="only"><span><b>Bagikan hanya ke…</b><small id="cnt-only"></small></span></label>
+        <button type="button" class="ghost small" data-edit="only">Atur</button>
+      </div>
+      <div class="audopt">
+        <label><input type="radio" name="aud" value="close"><span><b>Teman dekat</b><small id="cnt-close"></small></span></label>
+        <button type="button" class="ghost small" data-edit="close">Atur</button>
+      </div>
+    </div>
+    <p class="fine">Daftar ini tersimpan di HP ini dan terpisah dari pengaturan privasi di WhatsApp.</p>
+  </dialog>
+
+  <!-- Pemilih kontak -->
+  <dialog id="picker" class="full">
+    <div class="sheethead">
+      <b id="pickTitle"></b>
+      <button type="button" id="pickClose" class="primary small">Selesai</button>
+    </div>
+    <input id="pickSearch" type="search" placeholder="Cari nama atau nomor" autocomplete="off">
+    <div class="pickbar"><span id="pickCount"></span><button type="button" id="pickClear" class="ghost small">Kosongkan</button></div>
+    <ul id="pickList"></ul>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

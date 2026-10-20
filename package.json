@@ -1,0 +1,19 @@
+{
+  "name": "status-hd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Posting video/foto ke Status WhatsApp lewat jalur linked device (kualitas seperti WA Web), dijalankan dari HP via Termux.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "mock": "WA_MOCK=1 node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "pino": "^9.0.0",
+    "jimp": "latest"
+  }
+}
