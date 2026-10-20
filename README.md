@@ -77,6 +77,22 @@ Kalau tab **Akun** menunjukkan 0 kontak tersimpan, putuskan nomor lalu tautkan u
 
 **Riwayat:** tombol **Hapus** mengirim perintah hapus ke penerima yang sama dengan saat posting. Itu tidak menjamin status hilang di semua HP.
 
+## Mengurangi risiko blokir
+
+Tidak ada cara yang menjamin nomor aman, karena aturan deteksi WhatsApp tidak dipublikasikan. Aplikasi ini mengurangi pola yang paling mencolok:
+
+- **Jeda antar posting:** setelah satu status dikirim, status berikutnya baru bisa dikirim 120 detik kemudian. Jeda tetap berlaku walau server di-restart.
+- **Satu kiriman pada satu waktu:** posting baru ditolak selama masih ada yang sedang dikirim.
+- **Konfirmasi audiens besar:** kalau penerima lebih dari 300 orang, aplikasi meminta konfirmasi dulu. Ada [laporan akun diblokir permanen](https://github.com/WhiskeySockets/Baileys/issues/2309) setelah mengirim status lewat Baileys ke ribuan kontak.
+
+Angka 120 detik dan 300 orang adalah tebakan konservatif, bukan batas resmi. Keduanya bisa diubah:
+
+```
+MIN_GAP_SEC=300 LARGE_AUDIENCE=150 ./start.sh
+```
+
+Saran lain: pakai nomor yang sudah lama aktif normal, lebih sering pakai **Teman dekat** atau **Bagikan hanya ke…** daripada semua kontak, dan jangan pasang paket "anti-ban" pihak ketiga yang tidak jelas asalnya, karena paket itu ikut memegang kunci sesi WhatsApp-mu.
+
 ## 6. Apa yang dilakukan dengan videomu
 
 - H.264 + AAC dalam MP4, ukuran ≤ 16 MB: **dikirim apa adanya**, tanpa kompresi ulang.

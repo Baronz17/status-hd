@@ -27,7 +27,12 @@ async function api(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Kesalahan ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Kesalahan ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 
@@ -320,7 +325,9 @@ function renderAudience() {
   }
   const i = audInfo(m);
   setText($('audLabel'), i.name);
-  if (i.n > 0) setText($('audCount'), `${i.approx ? 'Sekitar ' : ''}${fmtNum(i.n)} penerima`);
+  const big = i.n > (wa.largeAudience || 300);
+  btn.classList.toggle('big', big);
+  if (i.n > 0) setText($('audCount'), `${i.approx ? 'Sekitar ' : ''}${fmtNum(i.n)} penerima${big ? '. Audiens besar: risiko blokir lebih tinggi.' : ''}`);
   else if (m === 'all' || m === 'except') setText($('audCount'), 'Belum ada kontak tersimpan. Lihat tab Akun.');
   else setText($('audCount'), 'Daftarnya masih kosong. Ketuk untuk mengatur.');
   btn.classList.toggle('need', !(i.n > 0));
@@ -409,16 +416,25 @@ function updatePostButton() {
   const m = audience();
   const i = m && audInfo(m);
   const btn = $('postBtn');
-  btn.disabled = !(wa.state === 'open' && current && !uploading && !posting && i && i.n > 0);
+  const wait = Math.ceil(((wa.cooldownUntil || 0) - Date.now()) / 1000);
+  btn.disabled = !(wa.state === 'open' && current && !uploading && !posting && i && i.n > 0 && wait <= 0);
   btn.textContent =
     posting ? 'Mengirim…' :
     uploading ? 'Mengunggah ke server…' :
     wa.state !== 'open' ? 'Menunggu WhatsApp terhubung' :
+    wait > 0 ? `Bisa kirim lagi dalam ${fmtWait(wait)}` :
     !current ? 'Pilih file dulu' :
     !m ? 'Pilih audiens dulu' :
     !(i.n > 0) ? 'Daftar audiens masih kosong' :
     'Kirim ke Status';
 }
+
+function fmtWait(s) {
+  if (s < 60) return `${s} dtk`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+// Hitung mundur jeda di tombol kirim.
+setInterval(() => { if ((wa.cooldownUntil || 0) > Date.now() - 1500) updatePostButton(); }, 1000);
 
 function jobCard() {
   const box = document.createElement('div');
@@ -476,10 +492,28 @@ function jobCard() {
 
 $('postBtn').addEventListener('click', async () => {
   if (!current) return;
+  const mode = audience();
+  const info = audInfo(mode);
+  let confirmLarge = false;
+  if (info && info.n > (wa.largeAudience || 300)) {
+    const ok = confirm(`Status akan dikirim ke ${info.approx ? 'sekitar ' : ''}${fmtNum(info.n)} orang sekaligus. Audiens sebesar ini lebih berisiko membuat nomor diblokir. Tetap kirim?`);
+    if (!ok) return;
+    confirmLarge = true;
+  }
   posting = true;
   updatePostButton();
   try {
-    const { jobId } = await api('/api/post', { method: 'POST', body: { id: current.id, caption: $('caption').value, audience: audience() } });
+    const send = (confirmed) => api('/api/post', { method: 'POST', body: { id: current.id, caption: $('caption').value, audience: mode, confirmLarge: confirmed } });
+    let started;
+    try {
+      started = await send(confirmLarge);
+    } catch (e) {
+      // Server menghitung jumlah penerima lebih besar dari perkiraan di layar.
+      if (!(e.data && e.data.needsConfirm)) throw e;
+      if (!confirm(`${e.message} Tetap kirim?`)) return;
+      started = await send(true);
+    }
+    const { jobId } = started;
     const render = jobCard();
     render({ status: 'queued' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -494,7 +528,7 @@ $('postBtn').addEventListener('click', async () => {
     flash(e.message, true);
   } finally {
     posting = false;
-    updatePostButton();
+    refreshState(); // ambil waktu jeda terbaru dari server
   }
 });
 

@@ -25,6 +25,9 @@ const MAX_MB = Number(process.env.MAX_MB || 16);
 const MAX_BYTES = MAX_MB * 1024 * 1024;
 const MAX_UPLOAD = 1024 ** 3; // 1 GB, batas wajar untuk file dari galeri
 const DEFAULT_CC = process.env.DEFAULT_CC || '62';
+// Pengurang risiko blokir (bukan jaminan): jeda minimal antar posting dan konfirmasi untuk audiens besar.
+const MIN_GAP_SEC = Number(process.env.MIN_GAP_SEC ?? 120);
+const LARGE_AUDIENCE = Number(process.env.LARGE_AUDIENCE || 300);
 const EXTRA_HOSTS = (process.env.ALLOWED_HOSTS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.m4v', '.mkv', '.webm', '.3gp']);
@@ -105,6 +108,16 @@ function saveLists(input) {
 // ---- riwayat posting (untuk fitur hapus) ----
 const POSTS_FILE = path.join(DATA, 'posts.json');
 function loadPosts() { try { return JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8')); } catch { return []; } }
+// Waktu percobaan kirim terakhir; dipulihkan dari riwayat supaya jeda tetap berlaku setelah restart.
+let lastPostAt = (() => {
+  try {
+    const list = JSON.parse(fs.readFileSync(path.join(DATA, 'posts.json'), 'utf8'));
+    const t = Date.parse(list[list.length - 1]?.at);
+    return Number.isFinite(t) ? t : 0;
+  } catch { return 0; }
+})();
+const cooldownUntil = () => (MIN_GAP_SEC > 0 ? lastPostAt + MIN_GAP_SEC * 1000 : 0);
+
 function savePosts(list) { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(POSTS_FILE, JSON.stringify(list.slice(-50))); }
 
 function safeUnlink(p) {
@@ -189,6 +202,7 @@ async function processJob(job) {
 
     job.status = 'sending';
     job.progress = null;
+    lastPostAt = Date.now(); // jeda dihitung sejak percobaan kirim, termasuk yang gagal di tengah jalan
     job.result = await wa.postStatus({ filePath: sendPath, kind: up.kind, caption: job.caption, audience: job.audience, lists: loadLists() });
     const { jids, ...publicResult } = job.result;
     if (job.result.messageId) {
@@ -252,7 +266,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && p === '/api/state') {
-      return sendJson(res, 200, { ...wa.getState(), ffmpeg: FFMPEG, maxMB: MAX_MB });
+      return sendJson(res, 200, { ...wa.getState(), ffmpeg: FFMPEG, maxMB: MAX_MB, cooldownUntil: cooldownUntil(), minGapSec: MIN_GAP_SEC, largeAudience: LARGE_AUDIENCE });
     }
 
     if (req.method === 'POST' && p === '/api/pair') {
@@ -290,11 +304,28 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && p === '/api/upload') return handleUpload(req, res, url);
 
     if (req.method === 'POST' && p === '/api/post') {
-      const { id, caption = '', audience } = await readJson(req);
+      const { id, caption = '', audience, confirmLarge = false } = await readJson(req);
       if (!uploads.has(id)) return sendJson(res, 404, { error: 'File tidak ditemukan. Pilih ulang.' });
       if (!['all', 'except', 'only', 'close'].includes(audience)) return sendJson(res, 400, { error: 'Pilih audiens dulu.' });
       if (String(caption).length > 700) return sendJson(res, 400, { error: 'Keterangan terlalu panjang (maks 700 karakter).' });
       if (wa.getState().state !== 'open') return sendJson(res, 409, { error: 'WhatsApp belum terhubung.' });
+
+      if ([...jobs.values()].some((j) => ['queued', 'transcoding', 'sending'].includes(j.status))) {
+        return sendJson(res, 409, { error: 'Masih ada status yang sedang dikirim. Tunggu sampai selesai.' });
+      }
+      const wait = Math.ceil((cooldownUntil() - Date.now()) / 1000);
+      if (wait > 0) {
+        return sendJson(res, 429, { error: `Tunggu ${wait} detik lagi sebelum mengirim status berikutnya. Jeda ini mengurangi risiko blokir.`, retryAfter: wait });
+      }
+      let size;
+      try { size = wa.audienceSize(audience, loadLists()); } catch (e) { return sendJson(res, 400, { error: e.message }); }
+      if (size > LARGE_AUDIENCE && confirmLarge !== true) {
+        return sendJson(res, 409, {
+          error: `Status akan dikirim ke ${size} orang sekaligus. Audiens sebesar ini lebih berisiko membuat nomor diblokir.`,
+          needsConfirm: true,
+          recipients: size,
+        });
+      }
       const job = { id: randomUUID().slice(0, 8), uploadId: id, caption: String(caption).trim(), audience, status: 'queued', progress: null, notes: [], error: null, result: null, createdAt: Date.now() };
       jobs.set(job.id, job);
       queue.push(job.id);
