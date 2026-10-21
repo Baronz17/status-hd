@@ -77,15 +77,11 @@ Kalau tab **Akun** menunjukkan 0 kontak tersimpan, putuskan nomor lalu tautkan u
 
 **Riwayat:** tombol **Hapus** mengirim perintah hapus ke penerima yang sama dengan saat posting. Itu tidak menjamin status hilang di semua HP.
 
-## Kirim ke nomor utama, lalu teruskan ke Status (eksperimen)
+## Kirim video HD ke chat
 
-Di tab **Kirim**, pilih **Chat ke nomor** dan isi nomor utamamu. Aplikasi mengirim file asli dari nomor cadangan ke chat nomor utama. Di HP, buka chat itu lalu teruskan file ke **Status saya**.
+Di tab **Kirim**, pilih **Chat ke nomor** lalu isi nomor tujuan. Aplikasi mengirim file asli ke chat itu, jadi penerima mendapat video setajam aslinya, tidak dikompres seperti saat mengirim dari aplikasi WhatsApp di HP.
 
-Kelebihannya:
-- Nomor utama tidak pernah ditautkan ke klien tidak resmi. Risiko blokir hanya ada di nomor cadangan.
-- Audiens status mengikuti pengaturan privasi WhatsApp di nomor utama, dan status bisa dihapus seperti biasa.
-
-**Belum terverifikasi:** apakah WhatsApp mengompres ulang video saat diteruskan ke Status. Kalau iya, cara ini tidak memberi kualitas HD. Uji dulu dengan satu video dan bandingkan.
+**Sudah diuji: meneruskan file itu ke Status dari HP tidak mempertahankan HD.** WhatsApp di HP mengompresnya lagi saat diteruskan. Untuk Status HD, posting langsung dari aplikasi ini lewat pilihan **Status**.
 
 Jeda antar kiriman chat 15 detik, bisa diubah dengan `CHAT_GAP_SEC`.
 

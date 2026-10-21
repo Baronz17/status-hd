@@ -520,7 +520,7 @@ function jobCard() {
     if (j.status === 'done' && j.result && toChat) {
       text = j.result.ack === 'none'
         ? 'Belum ada konfirmasi dalam 12 detik. Cek chat di nomor tujuan.'
-        : 'Buka chat ini di nomor tujuan, lalu teruskan ke Status saya.';
+        : 'Penerima mendapat file asli tanpa kompresi ulang.';
     } else if (j.status === 'done' && j.result) {
       const ack = j.result.ack === 'delivered' ? 'Sudah diterima di HP penerima.'
         : j.result.ack === 'server' ? 'Diterima server WhatsApp.'
